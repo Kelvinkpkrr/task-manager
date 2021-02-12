@@ -1,6 +1,10 @@
-const mongodb = require("mongodb");
-//Gives access to the functions needed for CRUD
-const MongoClient = mongodb.MongoClient;
+// const mongodb = require("mongodb");
+// //Gives access to the functions needed for CRUD
+// const MongoClient = mongodb.MongoClient;
+// const ObjectID = mongodb.ObjectID;
+
+//Object destructuring
+const { MongoClient } = require("mongodb");
 
 const connectionUrl = "mongodb://127.0.0.1:27017";
 const database = "task-manager";
