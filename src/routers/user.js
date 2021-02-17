@@ -1,5 +1,6 @@
 const express = require("express");
 const User = require("../models/user");
+const auth = require("../middleware/auth");
 const router = new express.Router();
 
 router.post("/users/login", async (req, res) => {
@@ -32,14 +33,9 @@ router.post("/users", async (req, res) => {
   //   .catch((e) => res.status(400).send(e));
 });
 
-//Read all users
-router.get("/users", async (req, res) => {
-  try {
-    const users = await User.find({});
-    res.status(200).send(users);
-  } catch (error) {
-    res.status(500).send();
-  }
+//Read user profile
+router.get("/users/me", auth, async (req, res) => {
+  res.send(req.user);
 });
 
 //Read a user by id using route parameters
@@ -99,6 +95,18 @@ router.delete("/users/:id", async (req, res) => {
 
     res.send(user);
   } catch (e) {
+    res.status(500).send();
+  }
+});
+
+router.post("/users/logout", auth, async (req, res) => {
+  try {
+    req.user.tokens = req.user.tokens.filter((token) => {
+      return token.token !== req.token;
+    });
+    await req.user.save();
+    res.send();
+  } catch (error) {
     res.status(500).send();
   }
 });
