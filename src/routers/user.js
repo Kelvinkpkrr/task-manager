@@ -1,4 +1,5 @@
 const express = require("express");
+const multer = require("multer");
 const User = require("../models/user");
 const auth = require("../middleware/auth");
 const router = new express.Router();
@@ -33,9 +34,52 @@ router.post("/users", async (req, res) => {
   //   .catch((e) => res.status(400).send(e));
 });
 
+const upload = multer({
+  //Do not want to save to the filesystem
+  // dest: "avatars",
+  limits: { fileSize: 1000000 },
+  fileFilter(req, file, cb) {
+    if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+      return cb(new Error("Please upload an image"));
+    }
+    cb(undefined, true);
+  },
+});
+
+router.post(
+  "/users/me/avatar",
+  auth,
+  upload.single("avatar"),
+  async (req, res) => {
+    //can now access file buffer as we have removed the dest property
+    req.user.avatar = req.file.buffer;
+    await req.user.save();
+    res.send();
+  },
+  (error, req, res, next) => {
+    res.status(400).send({ error: error.message });
+  }
+);
+
 //Read user profile
 router.get("/users/me", auth, async (req, res) => {
   res.send(req.user);
+});
+
+//Serve up user avatar file
+router.get("/users/:id/avatar", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user || !user.avatar) {
+      throw new Error();
+    }
+    //Set response header to inform data type
+    //takes a key value pair
+    res.set("Content-Type", "image/jpg");
+    res.send(user.avatar);
+  } catch (error) {
+    res.status(400).send();
+  }
 });
 
 router.patch("/users/me", auth, async (req, res) => {
@@ -71,6 +115,13 @@ router.delete("/users/me", auth, async (req, res) => {
   } catch (e) {
     res.status(500).send();
   }
+});
+
+router.delete("/users/avatar/me", auth, async (req, res) => {
+  //Clear avatar field
+  req.user.avatar = undefined;
+  await req.user.save();
+  res.send();
 });
 
 //Logout from current session using single current token
