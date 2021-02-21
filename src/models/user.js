@@ -71,15 +71,19 @@ userSchema.virtual("tasks", {
 userSchema.methods.toJSON = function () {
   const user = this;
   const userObj = user.toObject();
+  //No need to send back password for security
   delete userObj.password;
+  //No need to send back tokens for security
   delete userObj.tokens;
+  //Unnecessarily large to send back
+  delete userObj.avatar;
   return userObj;
 };
 
 //The method is accessible on the instance
 userSchema.methods.generateAuthToken = async function () {
   const user = this;
-  const token = jwt.sign({ _id: user._id.toString() }, "thisisataskmanagerapp");
+  const token = jwt.sign({ _id: user._id.toString() }, process.env.JWT_SECRET);
   user.tokens = user.tokens.concat({ token });
   await user.save();
   return token;

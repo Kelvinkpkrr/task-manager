@@ -2,6 +2,8 @@ const express = require("express");
 const multer = require("multer");
 const User = require("../models/user");
 const auth = require("../middleware/auth");
+const { sendWelcomeEmail, sendCancelationEmail } = require("../emails/account");
+const sharp = require("sharp");
 const router = new express.Router();
 
 router.post("/users/login", async (req, res) => {
@@ -23,6 +25,7 @@ router.post("/users", async (req, res) => {
   //Using async await
   try {
     await user.save();
+    sendWelcomeEmail(user.email, user.name);
     const token = await user.generateAuthToken();
     res.status(201).send({ user, token });
   } catch (error) {
@@ -52,7 +55,11 @@ router.post(
   upload.single("avatar"),
   async (req, res) => {
     //can now access file buffer as we have removed the dest property
-    req.user.avatar = req.file.buffer;
+    const buffer = await sharp(req.file.buffer)
+      .resize({ width: 250, height: 250 })
+      .png()
+      .toBuffer();
+    req.user.avatar = buffer;
     await req.user.save();
     res.send();
   },
@@ -75,7 +82,7 @@ router.get("/users/:id/avatar", async (req, res) => {
     }
     //Set response header to inform data type
     //takes a key value pair
-    res.set("Content-Type", "image/jpg");
+    res.set("Content-Type", "image/png");
     res.send(user.avatar);
   } catch (error) {
     res.status(400).send();
@@ -111,9 +118,10 @@ router.patch("/users/me", auth, async (req, res) => {
 router.delete("/users/me", auth, async (req, res) => {
   try {
     await req.user.remove();
+    sendCancelationEmail(req.user.email, req.user.name);
     res.send(req.user);
   } catch (e) {
-    res.status(500).send();
+    res.status(500).send(e.message);
   }
 });
 
